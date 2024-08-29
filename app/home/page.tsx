@@ -21,8 +21,7 @@ const HomePage = () => {
           console.error('Error accessing the camera:', error);
         }
       } else if (videoRef.current) {
-        // Clear the video source if camera is turned off
-        videoRef.current.srcObject = null;
+        videoRef.current.srcObject = null; // Clear the video source
       }
     };
 
@@ -31,7 +30,6 @@ const HomePage = () => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => {
-          console.log('Stopping track:', track); // Debug log
           track.stop();
         });
         streamRef.current = null; // Clear the stream reference
@@ -54,7 +52,16 @@ const HomePage = () => {
         />
         Turn Camera {isCameraOn ? 'Off' : 'On'}
       </label>
-      <video ref={videoRef} width="640" height="480" autoPlay></video>
+      <video
+        ref={videoRef}
+        width="640"
+        height="480"
+        autoPlay
+        style={{
+          transform: 'scaleX(-1)', // Flip the camera output horizontally
+          marginTop: '20px',
+        }}
+      ></video>
     </div>
   );
 };
