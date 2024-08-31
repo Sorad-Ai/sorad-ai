@@ -11,11 +11,22 @@ export default function HomePage() {
   useEffect(() => {
     const startCamera = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        streamRef.current = stream; // Store the stream reference
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
+        try {
+          // Request video stream with 360p resolution
+          const constraints = {
+            video: {
+              width: { exact: 640 },
+              height: { exact: 360 }
+            }
+          };
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          streamRef.current = stream; // Store the stream reference
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+          }
+        } catch (error) {
+          console.error('Error accessing the camera:', error);
         }
       }
     };
