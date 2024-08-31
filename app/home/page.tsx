@@ -7,25 +7,27 @@ import * as camUtils from '@mediapipe/camera_utils';
 const HomePage = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const handsRef = useRef<handpose.Hands | null>(null);
   const cameraRef = useRef<camUtils.Camera | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    const initMediaPipe = () => {
-      handsRef.current = new handpose.Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-      });
+    const initMediaPipe = async () => {
+      if (!handsRef.current) {
+        handsRef.current = new handpose.Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
 
-      handsRef.current.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
+        handsRef.current.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
 
-      handsRef.current.onResults(onResults);
+        handsRef.current.onResults(onResults);
+      }
     };
 
     const startCamera = async () => {
@@ -42,27 +44,38 @@ const HomePage = () => {
             cameraRef.current = new camUtils.Camera(videoRef.current, {
               onFrame: async () => {
                 if (handsRef.current && videoRef.current) {
-                  await handsRef.current.send({ image: videoRef.current });
+                  try {
+                    await handsRef.current.send({ image: videoRef.current });
+                  } catch (error) {
+                    console.error('Error sending frame to MediaPipe:', error);
+                  }
                 }
               },
             });
+
             cameraRef.current.start();
           }
         } catch (error) {
           console.error('Error accessing the camera:', error);
         }
-      } else if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      } else {
+        stopCamera();
       }
     };
 
-    initMediaPipe(); // Initialize MediaPipe as soon as possible
-    startCamera(); // Start the camera
-
-    return () => {
+    const stopCamera = () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
+      }
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
+      if (cameraRef.current) {
+        cameraRef.current.stop();
+        cameraRef.current = null;
       }
 
       if (handsRef.current) {
@@ -70,57 +83,72 @@ const HomePage = () => {
         handsRef.current = null;
       }
 
-      if (cameraRef.current) {
-        cameraRef.current.stop();
-        cameraRef.current = null;
+      if (canvasRef.current) {
+        const canvasCtx = canvasRef.current.getContext('2d');
+        if (canvasCtx) {
+          canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
       }
     };
-  }, [isCameraOn]);
 
-  const onResults = (results: handpose.Results) => {
-    if (canvasRef.current) {
-      const canvasCtx = canvasRef.current.getContext('2d');
-      if (canvasCtx) {
-        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    const onResults = (results: handpose.Results) => {
+      if (canvasRef.current) {
+        const canvasCtx = canvasRef.current.getContext('2d');
+        if (canvasCtx) {
+          canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-        canvasCtx.drawImage(
-          results.image,
-          0,
-          0,
-          canvasRef.current.width,
-          canvasRef.current.height
-        );
+          canvasCtx.drawImage(
+            results.image,
+            0,
+            0,
+            canvasRef.current.width,
+            canvasRef.current.height
+          );
 
-        if (results.multiHandLandmarks) {
-          for (const landmarks of results.multiHandLandmarks) {
-            drawLandmarks(canvasCtx, landmarks);
+          if (results.multiHandLandmarks) {
+            results.multiHandLandmarks.forEach((landmarks) => {
+              drawLandmarks(canvasCtx, landmarks);
+            });
           }
         }
       }
-    }
-  };
+    };
 
-  const drawLandmarks = (ctx: CanvasRenderingContext2D | null, landmarks: handpose.NormalizedLandmarkList) => {
-    if (ctx) {
-      ctx.fillStyle = 'red';
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
+    const drawLandmarks = (ctx: CanvasRenderingContext2D, landmarks: handpose.NormalizedLandmarkList) => {
+      if (ctx) {
+        ctx.fillStyle = 'red';
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
 
-      // Clear previously drawn landmarks
-      ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+        landmarks.forEach((landmark) => {
+          const x = landmark.x * canvasRef.current!.width;
+          const y = landmark.y * canvasRef.current!.height;
 
-      // Draw only 21 landmarks for each hand
-      landmarks.slice(0, 21).forEach((landmark) => {
-        const x = landmark.x * canvasRef.current!.width;
-        const y = landmark.y * canvasRef.current!.height;
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
+    };
 
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-      });
-    }
-  };
+    const manageCamera = async () => {
+      if (isCameraOn) {
+        // Delay MediaPipe initialization and camera start
+        await new Promise(resolve => setTimeout(resolve, 100)); // Adjust delay if needed
+        await initMediaPipe();
+        await startCamera();
+      } else {
+        stopCamera();
+      }
+    };
+
+    manageCamera();
+
+    return () => {
+      stopCamera();
+    };
+  }, [isCameraOn]);
 
   const handleCheckboxChange = () => {
     setIsCameraOn(prevState => !prevState);
@@ -142,7 +170,7 @@ const HomePage = () => {
         width="640"
         height="480"
         autoPlay
-        style={{ display: 'none' }}
+        style={{ display: 'none' }} // Hide the video element
       ></video>
       <canvas
         ref={canvasRef}
