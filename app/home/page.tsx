@@ -15,8 +15,8 @@ export default function HomePage() {
           // Request video stream with 360p resolution
           const constraints = {
             video: {
-              width: { exact: 640 },
-              height: { exact: 360 }
+              width: { ideal: 640 }, // Use 'ideal' to allow higher resolutions if available
+              height: { ideal: 360 } // Use 'ideal' to allow higher resolutions if available
             }
           };
           const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -62,7 +62,13 @@ export default function HomePage() {
         />
         Toggle Camera
       </label>
-      {isCameraOn && <video ref={videoRef} style={{ width: '100%' }} />}
+      {isCameraOn && (
+        <video
+          ref={videoRef}
+          style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
+          autoPlay
+        />
+      )}
     </div>
   );
 }
