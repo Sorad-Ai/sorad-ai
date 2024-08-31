@@ -13,10 +13,24 @@ const HomePage = () => {
   const cameraRef = useRef<camUtils.Camera | null>(null);
 
   useEffect(() => {
+    const initMediaPipe = () => {
+      handsRef.current = new handpose.Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      });
+
+      handsRef.current.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      handsRef.current.onResults(onResults);
+    };
+
     const startCamera = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && isCameraOn) {
         try {
-          // Start the camera stream first
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -24,24 +38,7 @@ const HomePage = () => {
           }
           streamRef.current = stream;
 
-          // Initialize MediaPipe in parallel
-          if (!handsRef.current) {
-            handsRef.current = new handpose.Hands({
-              locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-            });
-
-            handsRef.current.setOptions({
-              maxNumHands: 2,
-              modelComplexity: 1,
-              minDetectionConfidence: 0.5,
-              minTrackingConfidence: 0.5,
-            });
-
-            handsRef.current.onResults(onResults);
-          }
-
-          // Start the MediaPipe camera processing after stream is loaded
-          if (videoRef.current && !cameraRef.current) {
+          if (!cameraRef.current) {
             cameraRef.current = new camUtils.Camera(videoRef.current, {
               onFrame: async () => {
                 if (handsRef.current && videoRef.current) {
@@ -59,46 +56,8 @@ const HomePage = () => {
       }
     };
 
-    const onResults = (results: handpose.Results) => {
-      if (canvasRef.current) {
-        const canvasCtx = canvasRef.current.getContext('2d');
-        canvasCtx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-        canvasCtx?.drawImage(
-          results.image,
-          0,
-          0,
-          canvasRef.current.width,
-          canvasRef.current.height
-        );
-
-        if (results.multiHandLandmarks) {
-          for (const landmarks of results.multiHandLandmarks) {
-            drawLandmarks(canvasCtx, landmarks);
-          }
-        }
-      }
-    };
-
-    const drawLandmarks = (ctx: CanvasRenderingContext2D | null, landmarks: handpose.NormalizedLandmarkList) => {
-      if (ctx) {
-        ctx.fillStyle = 'red';
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-
-        for (let i = 0; i < landmarks.length; i++) {
-          const x = landmarks[i].x * canvasRef.current!.width;
-          const y = landmarks[i].y * canvasRef.current!.height;
-
-          ctx.beginPath();
-          ctx.arc(x, y, 5, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.stroke();
-        }
-      }
-    };
-
-    startCamera();
+    initMediaPipe(); // Initialize MediaPipe as soon as possible
+    startCamera(); // Start the camera
 
     return () => {
       if (streamRef.current) {
@@ -117,6 +76,51 @@ const HomePage = () => {
       }
     };
   }, [isCameraOn]);
+
+  const onResults = (results: handpose.Results) => {
+    if (canvasRef.current) {
+      const canvasCtx = canvasRef.current.getContext('2d');
+      if (canvasCtx) {
+        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+        canvasCtx.drawImage(
+          results.image,
+          0,
+          0,
+          canvasRef.current.width,
+          canvasRef.current.height
+        );
+
+        if (results.multiHandLandmarks) {
+          for (const landmarks of results.multiHandLandmarks) {
+            drawLandmarks(canvasCtx, landmarks);
+          }
+        }
+      }
+    }
+  };
+
+  const drawLandmarks = (ctx: CanvasRenderingContext2D | null, landmarks: handpose.NormalizedLandmarkList) => {
+    if (ctx) {
+      ctx.fillStyle = 'red';
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+
+      // Clear previously drawn landmarks
+      ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+
+      // Draw only 21 landmarks for each hand
+      landmarks.slice(0, 21).forEach((landmark, index) => {
+        const x = landmark.x * canvasRef.current!.width;
+        const y = landmark.y * canvasRef.current!.height;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+  };
 
   const handleCheckboxChange = () => {
     setIsCameraOn(prevState => !prevState);
