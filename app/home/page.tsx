@@ -16,6 +16,7 @@ const HomePage = () => {
     const startCamera = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && isCameraOn) {
         try {
+          // Start the camera stream first
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -23,6 +24,7 @@ const HomePage = () => {
           }
           streamRef.current = stream;
 
+          // Initialize MediaPipe in parallel
           if (!handsRef.current) {
             handsRef.current = new handpose.Hands({
               locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
@@ -38,6 +40,7 @@ const HomePage = () => {
             handsRef.current.onResults(onResults);
           }
 
+          // Start the MediaPipe camera processing after stream is loaded
           if (videoRef.current && !cameraRef.current) {
             cameraRef.current = new camUtils.Camera(videoRef.current, {
               onFrame: async () => {
