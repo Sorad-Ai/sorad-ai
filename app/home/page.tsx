@@ -1,8 +1,6 @@
 "use client"; // This directive ensures the file is run on the client-side
 
 import { useState, useRef, useEffect } from 'react';
-import * as handPoseDetection from '@mediapipe/hands';
-import * as tf from '@tensorflow/tfjs';
 
 export default function HomePage() {
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -10,6 +8,26 @@ export default function HomePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    const loadScripts = async () => {
+      // Load TensorFlow.js
+      const tfScript = document.createElement('script');
+      tfScript.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js';
+      document.body.appendChild(tfScript);
+
+      // Load MediaPipe Hands
+      const mpHandsScript = document.createElement('script');
+      mpHandsScript.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.3.1620558014/hands.min.js';
+      document.body.appendChild(mpHandsScript);
+
+      return new Promise<void>((resolve) => {
+        tfScript.onload = () => {
+          mpHandsScript.onload = () => {
+            resolve();
+          };
+        };
+      });
+    };
+
     const startCamera = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -43,16 +61,17 @@ export default function HomePage() {
     const runHandTracking = async () => {
       if (!isCameraOn || !videoRef.current || !canvasRef.current) return;
 
+      await loadScripts();
+
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
       if (!context) return;
 
-      // Set up MediaPipe Hands
-      await tf.ready();
-      const hands = new handPoseDetection.Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      // Initialize MediaPipe Hands
+      const hands = new (window as any).Hands({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.3.1620558014/${file}`,
       });
 
       hands.setOptions({
@@ -61,7 +80,7 @@ export default function HomePage() {
         minTrackingConfidence: 0.5
       });
 
-      hands.onResults((results) => {
+      hands.onResults((results: any) => {
         context.clearRect(0, 0, canvas.width, canvas.height);
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -85,7 +104,7 @@ export default function HomePage() {
     runHandTracking();
   }, [isCameraOn]);
 
-  const drawHandLandmarks = (context: CanvasRenderingContext2D, landmarks: handPoseDetection.NormalizedLandmark[]) => {
+  const drawHandLandmarks = (context: CanvasRenderingContext2D, landmarks: any) => {
     context.strokeStyle = '#FF0000';
     context.lineWidth = 2;
     for (let i = 0; i < landmarks.length; i++) {
