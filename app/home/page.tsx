@@ -38,7 +38,7 @@ const HomePage = () => {
           }
           streamRef.current = stream;
 
-          if (!cameraRef.current) {
+          if (!cameraRef.current && videoRef.current) {
             cameraRef.current = new camUtils.Camera(videoRef.current, {
               onFrame: async () => {
                 if (handsRef.current && videoRef.current) {
@@ -110,7 +110,7 @@ const HomePage = () => {
       ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
 
       // Draw only 21 landmarks for each hand
-      landmarks.slice(0, 21).forEach((landmark, index) => {
+      landmarks.slice(0, 21).forEach((landmark) => {
         const x = landmark.x * canvasRef.current!.width;
         const y = landmark.y * canvasRef.current!.height;
 
@@ -156,6 +156,5 @@ const HomePage = () => {
     </div>
   );
 };
-
 
 export default HomePage;
