@@ -2,7 +2,7 @@
 "use client"; // This directive ensures the file is run on the client-side
 
 import { useState, useRef, useEffect } from 'react';
-import { Hands } from '@mediapipe/hands';
+import { Hands, HAND_CONNECTIONS } from '@mediapipe/hands';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import { Camera } from '@mediapipe/camera_utils';
 
@@ -56,7 +56,7 @@ export default function HomePage() {
 
                     if (results.multiHandLandmarks) {
                       for (const landmarks of results.multiHandLandmarks) {
-                        drawConnectors(canvasCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
                         drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2 });
                       }
                     }
