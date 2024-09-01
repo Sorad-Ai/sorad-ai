@@ -10,6 +10,7 @@ export default function HomePage() {
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null); // Store the media stream to stop the camera
 
   useEffect(() => {
     let camera: Camera | null = null;
@@ -18,6 +19,8 @@ export default function HomePage() {
     const startCamera = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        mediaStreamRef.current = stream; // Store the stream reference
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play();
@@ -41,6 +44,7 @@ export default function HomePage() {
               });
 
               hands.onResults((results) => {
+                // Safeguard to check for null references
                 if (canvasRef.current && videoRef.current) {
                   const canvasCtx = canvasRef.current.getContext('2d');
                   if (canvasCtx) {
@@ -67,7 +71,9 @@ export default function HomePage() {
 
               camera = new Camera(videoRef.current, {
                 onFrame: async () => {
-                  await hands!.send({ image: videoRef.current! });
+                  if (hands && videoRef.current) {
+                    await hands.send({ image: videoRef.current });
+                  }
                 },
                 width: 640,
                 height: 480,
@@ -80,9 +86,12 @@ export default function HomePage() {
     };
 
     const stopCamera = () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop()); // Stop all tracks to turn off the camera
+        mediaStreamRef.current = null;
+      }
+
+      if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
 
