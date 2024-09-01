@@ -8,6 +8,7 @@ import { Camera } from '@mediapipe/camera_utils';
 
 export default function HomePage() {
   const [isCameraOn, setIsCameraOn] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // State to track if camera is being turned on or off
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null); // Store the media stream to stop the camera
@@ -17,6 +18,7 @@ export default function HomePage() {
     let hands: Hands | null = null;
 
     const startCamera = async () => {
+      setIsProcessing(true); // Start processing state
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         mediaStreamRef.current = stream; // Store the stream reference
@@ -83,9 +85,11 @@ export default function HomePage() {
           };
         }
       }
+      setIsProcessing(false); // End processing state
     };
 
     const stopCamera = () => {
+      setIsProcessing(true); // Start processing state
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop()); // Stop all tracks to turn off the camera
         mediaStreamRef.current = null;
@@ -102,6 +106,7 @@ export default function HomePage() {
       if (camera) {
         camera.stop();
       }
+      setIsProcessing(false); // End processing state
     };
 
     if (isCameraOn) {
@@ -122,9 +127,11 @@ export default function HomePage() {
           type="checkbox"
           checked={isCameraOn}
           onChange={() => setIsCameraOn(prev => !prev)}
+          disabled={isProcessing} // Disable checkbox while processing
         />
         Toggle Camera
       </label>
+      {isProcessing && <p>Processing...</p>} {/* Show processing message or spinner */}
       <div style={{ position: 'relative' }}>
         {isCameraOn && (
           <>
