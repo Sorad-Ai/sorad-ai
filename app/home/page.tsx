@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client"; // This directive ensures the file is run on the client-side
 
 import { useState, useRef, useEffect } from 'react';
@@ -8,32 +7,30 @@ import { Camera } from '@mediapipe/camera_utils';
 
 export default function HomePage() {
   const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false); // State to track if camera is being turned on or off
+  const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null); // Store the media stream to stop the camera
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     let camera: Camera | null = null;
     let hands: Hands | null = null;
 
     const startCamera = async () => {
-      setIsProcessing(true); // Start processing state
+      setIsProcessing(true);
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        mediaStreamRef.current = stream; // Store the stream reference
+        mediaStreamRef.current = stream;
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play();
 
-          // Wait for video to be ready before setting up the canvas and hand tracking
           videoRef.current.onloadedmetadata = () => {
             if (canvasRef.current && videoRef.current) {
               canvasRef.current.width = videoRef.current.videoWidth;
               canvasRef.current.height = videoRef.current.videoHeight;
 
-              // Initialize MediaPipe Hands
               hands = new Hands({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
               });
@@ -46,7 +43,6 @@ export default function HomePage() {
               });
 
               hands.onResults((results) => {
-                // Safeguard to check for null references
                 if (canvasRef.current && videoRef.current) {
                   const canvasCtx = canvasRef.current.getContext('2d');
                   if (canvasCtx) {
@@ -80,18 +76,19 @@ export default function HomePage() {
                 width: 100,
                 height: 100,
               });
+
               camera.start();
             }
           };
         }
       }
-      setIsProcessing(false); // End processing state
+      setIsProcessing(false);
     };
 
     const stopCamera = () => {
-      setIsProcessing(true); // Start processing state
+      setIsProcessing(true);
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop()); // Stop all tracks to turn off the camera
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
       }
 
@@ -106,7 +103,7 @@ export default function HomePage() {
       if (camera) {
         camera.stop();
       }
-      setIsProcessing(false); // End processing state
+      setIsProcessing(false);
     };
 
     if (isCameraOn) {
@@ -116,7 +113,7 @@ export default function HomePage() {
     }
 
     return () => {
-      stopCamera(); // Clean up the camera stream on component unmount
+      stopCamera();
     };
   }, [isCameraOn]);
 
@@ -127,11 +124,11 @@ export default function HomePage() {
           type="checkbox"
           checked={isCameraOn}
           onChange={() => setIsCameraOn(prev => !prev)}
-          disabled={isProcessing} // Disable checkbox while processing
+          disabled={isProcessing}
         />
         Toggle Camera
       </label>
-      {isProcessing && <p>Processing...</p>} {/* Show processing message or spinner */}
+      {isProcessing && <p>Processing...</p>}
       <div style={{ position: 'relative' }}>
         {isCameraOn && (
           <>
